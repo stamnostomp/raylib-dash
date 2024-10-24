@@ -5,36 +5,29 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
   };
 
-  outputs = { self, nixpkgs }: {
-    devShell = nixpkgs.mkShell {
-      buildInputs = [
-        nixpkgs.raylib
-        nixpkgs.gcc
-        nixpkgs.make
-      ];
+  outputs = { self, nixpkgs }: let
+    # Use a function to import nixpkgs with a specific system
+    system = "x86_64-linux"; # Change to your system architecture if needed
+    pkgs = import nixpkgs { inherit system; };
 
-      shellHook = ''
-        echo "Nix shell for Raylib application is ready!"
-        echo "Use 'make' to build your project."
-      '';
-    };
-
-    packages.x86_64-linux = let
-      inherit (nixpkgs) stdenv;
-    in {
-      myApp = stdenv.mkDerivation {
+    # Define the package attribute set
+    packages = {
+      myApp = pkgs.stdenv.mkDerivation {
         pname = "my-raylib-app";
         version = "0.1.0";
 
         src = ./.;
 
         buildInputs = [
-          nixpkgs.raylib
-          nixpkgs.gcc
+          pkgs.raylib
+          pkgs.gcc
         ];
 
         buildPhase = ''
-          gcc -o main main.c -I${nixpkgs.raylib}/include -L${nixpkgs.raylib}/lib -lraylib -lm -lpthread -ldl -lrt -lX11
+          gcc -o main main.c \
+            -I${pkgs.raylib}/include \
+            -L${pkgs.raylib}/lib \
+            -lraylib -lm -lpthread -ldl -lrt -lX11
         '';
 
         installPhase = ''
@@ -42,6 +35,23 @@
           mv main $out/bin/
         '';
       };
+    };
+  in {
+    # Provide a default package for the flake
+    defaultPackage.x86_64-linux = packages.myApp;
+
+    # Define a development shell
+    devShell.x86_64-linux = pkgs.mkShell {
+      buildInputs = [
+        pkgs.raylib
+        pkgs.gcc
+        pkgs.make
+      ];
+
+      shellHook = ''
+        echo "Nix shell for Raylib application is ready!"
+        echo "Use 'make' to build your project."
+      '';
     };
   };
 }
