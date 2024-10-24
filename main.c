@@ -1,60 +1,106 @@
 #include "raylib.h"
-#include <math.h>
 
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
+#define SCREEN_WIDTH 1280
+#define SCREEN_HEIGHT 800
+#define MAX_RPM 8000.0f
+#define BUFFER 40 // Buffer space for the RPM bar
 
-void DrawGauge(float value, float maxValue, Vector2 position, float radius, Color color, const char* label) {
-    // Draw the outer circle
-    DrawCircleV(position, radius, LIGHTGRAY);
-
-    // Calculate the angle for the needle
-    float angle = (value / maxValue) * 180 - 90; // Scale to 180 degrees
-    Vector2 needleEnd = {
-        position.x + radius * cosf(angle * (PI / 180)),
-        position.y + radius * sinf(angle * (PI / 180))
-    };
-
-    // Draw the needle
-    DrawLineV(position, needleEnd, color);
-
-    // Draw the label
-    DrawText(label, position.x - MeasureText(label, 20) / 2, position.y + radius + 10, 20, WHITE);
-}
-
-int main(void) {
+int main(void)
+{
     // Initialization
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Rally Gauge Cluster");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Digital Dash Cluster");
     SetTargetFPS(60);
 
-    float speed = 0.0f; // Speed value
-    float rpm = 0.0f;   // RPM value
-    float fuel = 0.0f;  // Fuel value
+    float speed = 0.0f;          // Speed in km/h
+    float rpm = 0.0f;            // RPM
+    float fuel = 100.0f;         // Fuel in percentage
+    float oilPressure = 50.0f;   // Oil pressure in PSI
+    float coolantTemp = 70.0f;   // Coolant temperature in °C
 
-    while (!WindowShouldClose()) {
-        // Update values (for demo purposes)
-        speed += 1.0f; // Increment speed
-        if (speed > 200) speed = 0; // Loop speed
+    while (!WindowShouldClose()) // Main game loop
+    {
+        // Update values (for simulation purposes)
+        speed += 0.5f;
+        if (speed > 220.0f) speed = 0.0f; // Reset speed
+        rpm += 10.0f;
+        if (rpm > MAX_RPM) rpm = 0.0f; // Reset RPM
+        fuel -= 0.1f;
+        if (fuel < 0.0f) fuel = 0.0f; // Minimum fuel
+        oilPressure += 0.1f;
+        if (oilPressure > 80.0f) oilPressure = 30.0f; // Reset oil pressure
+        coolantTemp += 0.2f;
+        if (coolantTemp > 100.0f) coolantTemp = 60.0f; // Reset coolant temp
 
-        rpm += 10.0f; // Increment RPM
-        if (rpm > 8000) rpm = 0; // Loop RPM
-
-        fuel -= 0.1f; // Decrement fuel
-        if (fuel < 0) fuel = 100; // Reset fuel
-
-        // Drawing
+        // Draw
         BeginDrawing();
-        ClearBackground(BLACK);
+        ClearBackground(RAYWHITE);
 
-        // Draw gauges
-        DrawGauge(speed, 200, (Vector2){ 200, 300 }, 100, RED, "Speed");
-        DrawGauge(rpm, 8000, (Vector2){ 600, 300 }, 100, GREEN, "RPM");
-        DrawGauge(fuel, 100, (Vector2){ 400, 500 }, 100, BLUE, "Fuel");
+        // Draw speed (centered)
+        const char *speedText = TextFormat("%.1f km/h", speed);
+        int speedTextWidth = MeasureText(speedText, 50);
+        DrawText("Speed", (SCREEN_WIDTH / 2) - (MeasureText("Speed", 30) / 2), 100, 30, BLACK);
+        DrawText(speedText, (SCREEN_WIDTH / 2) - (speedTextWidth / 2), 140, 50, DARKGRAY);
+
+        // Draw RPM
+        DrawText("RPM", 80, 220, 30, BLACK); // Moved down to 220
+        DrawText(TextFormat("%.1f", rpm), 80, 260, 50, DARKGRAY); // Moved down to 260
+
+        // Draw fuel
+        DrawText("Fuel", 80, 340, 30, BLACK); // Moved down to 340
+        DrawText(TextFormat("%.1f%%", fuel), 80, 380, 50, DARKGRAY); // Moved down to 380
+
+        // Draw Oil Pressure
+        DrawText("Oil Pressure", 1020, 340, 30, BLACK); // Moved down to 340
+        DrawText(TextFormat("%.1f PSI", oilPressure), 1020, 380, 50, DARKGRAY); // Moved down to 380
+
+        // Draw Coolant temp
+        DrawText("Coolant Temp", 1020, 220, 30, BLACK); // Moved down to 340
+        DrawText(TextFormat("%.1f °C", coolantTemp), 1020, 260, 50, DARKGRAY); // Moved down to 380
+
+
+
+        // Draw RPM gauge background with buffer
+        DrawRectangle(BUFFER, 60, SCREEN_WIDTH - 2 * BUFFER, 120, LIGHTGRAY); // Added buffer
+
+        // Determine RPM color based on stage
+        Color rpmColor;
+        if (rpm < 5000.0f) {
+            rpmColor = GREEN; // Safe zone
+        } else if (rpm < 6500.0f) {
+            rpmColor = YELLOW; // Caution zone
+        } else if (rpm < 7500.0f) {
+            rpmColor = ORANGE; // Danger zone
+        } else {
+            rpmColor = RED; // Red at max RPM
+        }
+
+        // Draw RPM filled bar
+        float rpmBarWidth = ((rpm / MAX_RPM) * (SCREEN_WIDTH - 2 * BUFFER));
+        DrawRectangle(BUFFER, 60, rpmBarWidth, 120, rpmColor); // Full width with buffer
+
+        // Draw RPM indicators below the bar
+        for (int i = 0; i <= 8; i++) {
+            float indicatorX = BUFFER + (i * ((SCREEN_WIDTH - 2 * BUFFER) / 8));
+            DrawText(TextFormat("%d", i * 1000), indicatorX - 15, 180, 20, BLACK); // Adjusted Y-coordinate to 180
+        }
+
+        // Draw oil pressure and coolant temp on the left side
+        // DrawText("Oil Pressure:", 80, 430, 25, BLACK); // Left side
+        //DrawText(TextFormat("%.1f PSI", oilPressure), 80, 460, 25, DARKGRAY); // Same style
+        //DrawText("Coolant Temp:", 80, 500, 25, BLACK); // Left side
+        //DrawText(TextFormat("%.1f °C", coolantTemp), 80, 530, 25, DARKGRAY); // Same style
+
+        // Draw larger "SHIFT!" message box at 95% RPM
+        if (rpm >= 0.90f * MAX_RPM) {
+            DrawRectangle(320, 400, 640, 120, RED); // Larger box
+            DrawText("SHIFT!", 490, 440, 40, WHITE); // Centered text
+        }
 
         EndDrawing();
     }
 
     // De-Initialization
-    CloseWindow();
+    CloseWindow(); // Close window and OpenGL context
+
     return 0;
 }
