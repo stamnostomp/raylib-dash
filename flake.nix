@@ -19,8 +19,10 @@
       '';
     };
 
-    packages.x86_64-linux = rec {
-      myApp = nixpkgs.stdenv.mkDerivation {
+    packages.x86_64-linux = let
+      inherit (nixpkgs) stdenv;
+    in {
+      myApp = stdenv.mkDerivation {
         pname = "my-raylib-app";
         version = "0.1.0";
 
