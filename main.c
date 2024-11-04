@@ -1,9 +1,25 @@
 #include "raylib.h"
-
+#include "pthread.h"
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 800
 #define MAX_RPM 8000.0f
 #define BUFFER 40 // Buffer space for the RPM bar
+#define BACKGROUND (Color){20,27,30,255}
+#define lightBG (Color){35,42,45,255}
+#define RED (Color){229, 116,166,255}
+#define GREEN (Color){140,207,126,255}
+#define YELLOW (Color){229, 199,107,255}
+#define BLUE (Color){103, 176, 232, 255}
+#define MAGENTA (Color){196, 127, 213, 255}
+#define CYAN (Color){108, 191, 191, 255}
+#define LIGHTGRAY (Color){179, 185, 184, 255}
+#define WHITE (Color){218, 218, 218, 255}
+
+void drawWarnings (void){
+    DrawRectangle(1000, 80, 200, 100, CYAN);
+
+}
+
 
 int main(void)
 {
@@ -25,29 +41,32 @@ int main(void)
     float flashDuration = 0.5f;
     float timer = 0.0f;
     bool showText = true;
+    bool testing = true;
+
 
 
     while (!WindowShouldClose()) // Main game loop
     {
+        if (testing){
+            speed += 0.5f;
+            if (speed > 220.0f) speed = 0.0f; // Reset speed
+            rpm += 10.0f;
+            if (rpm > MAX_RPM) rpm = 0.0f; // Reset RPM
+            fuel -= 0.1f;
+            if (fuel < 0.0f) fuel = 100.0f; // Minimum fuel
+            oilPressure += 0.001f;
+            if (oilPressure > 80.0f) oilPressure = 30.0f; // Reset oil pressure
+            coolantTemp += 0.2f;
+            if (coolantTemp > 100.0f) coolantTemp = 60.0f; // Reset coolant temp
+            fulePressure += 0.2f;
+            if (fulePressure > 90.0f) fulePressure = 70.0f;
+            volts += 0.002f;
+            if (volts > 14.5f) volts = 10.5f;
+        }
         // Update values (for simulation purposes)
-        speed += 0.5f;
-        if (speed > 220.0f) speed = 0.0f; // Reset speed
-        rpm += 10.0f;
-        if (rpm > MAX_RPM) rpm = 0.0f; // Reset RPM
-        fuel -= 0.1f;
-        if (fuel < 0.0f) fuel = 100.0f; // Minimum fuel
-        oilPressure += 0.001f;
-        if (oilPressure > 80.0f) oilPressure = 30.0f; // Reset oil pressure
-        coolantTemp += 0.2f;
-        if (coolantTemp > 100.0f) coolantTemp = 60.0f; // Reset coolant temp
-        fulePressure += 0.2f;
-        if (fulePressure > 90.0f) fulePressure = 70.0f;
-        volts += 0.002f;
-        if (volts > 14.5f) volts = 10.5f;
-
-        // Draw
+                // Draw
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground(BACKGROUND);
 
         //flashing texts
         timer += GetFrameTime();
@@ -62,19 +81,21 @@ int main(void)
         const char *speedText = TextFormat("%.0f", speed);
         int speedTextWidth = MeasureText(speedText, speedSize);
 
-        DrawText(speedText, centerX - (speedTextWidth /  2), centerY - 100, speedSize, GREEN);
+        drawWarnings();
+
+        DrawText(speedText, centerX - (speedTextWidth /  2), centerY - 100, speedSize, CYAN);
         // Draw RPM
         if (rpm < 6800.0f){
-         DrawText("RPM", 80, 220, 30, BLACK);
-         DrawText(TextFormat("%.1f", rpm), 80, 260, 50, DARKGRAY);
+         DrawText("RPM", 80, 220, 30, MAGENTA);
+         DrawText(TextFormat("%.1f", rpm), 80, 260, 50, LIGHTGRAY);
         } else {
-          DrawText("RPM", 80, 220, 30, BLACK);
+          DrawText("RPM", 80, 220, 30, MAGENTA);
           DrawText(TextFormat("%.1f", rpm), 80, 260, 50, RED);
         }
                // Draw fuel
-        DrawText("Fuel", 80, 340, 30, BLACK);
+        DrawText("Fuel", 80, 340, 30, MAGENTA);
         if ( fuel > 20.0f ){
-            DrawText(TextFormat("%.1f%%", fuel), 80, 380, 50, DARKGRAY);
+            DrawText(TextFormat("%.1f%%", fuel), 80, 380, 50, LIGHTGRAY);
         } else {
             DrawText(TextFormat("%.1f%%", fuel), 80, 380, 50, RED);
             if (showText){
@@ -83,15 +104,15 @@ int main(void)
 
         }
         // Draw Oil Pressure
-        DrawText("Oil Pressure", 1020, 340, 30, BLACK);
-        DrawText(TextFormat("%.1f PSI", oilPressure), 1020, 380, 50, DARKGRAY);
+        DrawText("Oil Pressure", 1020, 340, 30, MAGENTA);
+        DrawText(TextFormat("%.1f PSI", oilPressure), 1020, 380, 50, LIGHTGRAY);
 
         // Draw Coolant temp
         if (coolantTemp < 90.0f){
-            DrawText("Coolant Temp", 1020, 220, 30, BLACK);
-            DrawText(TextFormat("%.1f °C", coolantTemp), 1020, 260, 50, DARKGRAY);
+            DrawText("Coolant Temp", 1020, 220, 30, MAGENTA);
+            DrawText(TextFormat("%.1f °C", coolantTemp), 1020, 260, 50, LIGHTGRAY);
         } else {
-            DrawText("Coolant Temp", 1020, 220, 30, BLACK);
+            DrawText("Coolant Temp", 1020, 220, 30, MAGENTA);
             DrawText(TextFormat("%.1f °C", coolantTemp), 1020, 260, 50, RED);
             if (showText){
                 DrawText("!", 1210, 260, 60, RED);
@@ -99,15 +120,15 @@ int main(void)
         }
 
         // Draw Fuel Pressure
-        DrawText("Fuel Pressure", 1020, 460,30,BLACK);
-        DrawText(TextFormat("%.1f PSI", fulePressure), 1020, 500, 50, DARKGRAY);
+        DrawText("Fuel Pressure", 1020, 460,30, MAGENTA);
+        DrawText(TextFormat("%.1f PSI", fulePressure), 1020, 500, 50, LIGHTGRAY);
 
         // Draw Battery volts
         if ( volts > 11.5f ){
-            DrawText("Battery", 80, 460, 30, BLACK);
-            DrawText(TextFormat("%.1f V", volts), 80, 500, 50, DARKGRAY);
+            DrawText("Battery", 80, 460, 30, MAGENTA);
+            DrawText(TextFormat("%.1f V", volts), 80, 500, 50, LIGHTGRAY);
         } else {
-            DrawText("Battery", 80, 460, 30, BLACK);
+            DrawText("Battery", 80, 460, 30, MAGENTA);
             DrawText(TextFormat("%.1f V", volts), 80, 500, 50, RED);
             if (showText){
                 DrawText("!", 240, 500, 60, RED);
@@ -124,7 +145,7 @@ int main(void)
         } else if (rpm < 6500.0f) {
             rpmColor = YELLOW; // Caution zone
         } else if (rpm < 7100.0f) {
-            rpmColor = ORANGE; // Danger zone
+            rpmColor = YELLOW; // Danger zone
         } else {
             rpmColor = RED; // Red at max RPM
         }
@@ -136,7 +157,7 @@ int main(void)
         // Draw RPM indicators below the bar
         for (int i = 0; i <= 8; i++) {
             float indicatorX = BUFFER + (i * ((SCREEN_WIDTH - 2 * BUFFER) / 8));
-            DrawText(TextFormat("%d", i * 100), indicatorX - 15, 180, 20, BLACK); // Adjusted Y-coordinate to 180
+            DrawText(TextFormat("%d", i * 100), indicatorX - 15, 180, 20, WHITE); // Adjusted Y-coordinate to 180
         }
 
         // Draw oil pressure and coolant temp on the left side
@@ -160,6 +181,7 @@ int main(void)
 
     // De-Initialization
     CloseWindow(); // Close window and OpenGL context
+
 
     return 0;
 }

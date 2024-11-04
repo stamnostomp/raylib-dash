@@ -13,7 +13,7 @@
     # Define the package attribute set
     packages = {
       myApp = pkgs.stdenv.mkDerivation {
-        pname = "my-raylib-app";
+        pname = "raylib-gauge";
         version = "0.1.0";
 
         src = ./.;
@@ -32,7 +32,7 @@
 
         installPhase = ''
           mkdir -p $out/bin
-          mv main $out/bin/
+          mv main $out/bin/raylib-gauge
         '';
       };
     };
