@@ -1,28 +1,53 @@
 #include "raylib.h"
 #include "pthread.h"
+#include <stdio.h>
+
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 800
 #define MAX_RPM 8000.0f
 #define BUFFER 40 // Buffer space for the RPM bar
 #define BACKGROUND (Color){20,27,30,255}
-#define lightBG (Color){35,42,45,255}
 #define RED (Color){229, 116,166,255}
 #define GREEN (Color){140,207,126,255}
 #define YELLOW (Color){229, 199,107,255}
-#define BLUE (Color){103, 176, 232, 255}
 #define MAGENTA (Color){196, 127, 213, 255}
 #define CYAN (Color){108, 191, 191, 255}
 #define LIGHTGRAY (Color){179, 185, 184, 255}
-#define WHITE (Color){218, 218, 218, 255}
+#define WHITE (Color){255, 255, 255, 255}
 
-void drawWarnings (void){
+// Dimensions for the signal indicator grid
+#define GRID_WIDTH 4
+#define GRID_HEIGHT 2
+#define BOX_HIGHT 100
+#define BOX_WIDTH 160
+#define BOX_MARGIN 10
+
+void drawWarnings(void) {
     DrawRectangle(1000, 80, 200, 100, CYAN);
-
 }
 
+void drawSignalIndicatorGrid(void) {
+    Color boxColour = LIGHTGRAY;
+    for (int row = 0; row < GRID_HEIGHT; row++) {
+        for (int col = 0; col < GRID_WIDTH; col++) {
+            int x = (SCREEN_WIDTH / 2 - (GRID_WIDTH * (BOX_WIDTH + BOX_MARGIN)) / 2) + col * (BOX_WIDTH + BOX_MARGIN);
+            int y = SCREEN_HEIGHT - (GRID_HEIGHT * (BOX_HIGHT + BOX_MARGIN)) - 40 + row * (BOX_HIGHT + BOX_MARGIN);
 
-int main(void)
-{
+            if(row == 0 && col == 1) { // leftIndicator
+               boxColour = GREEN;
+            } else if (row == 0 && col == 2) { // right indicator
+               boxColour = GREEN;
+            } else {
+                boxColour = LIGHTGRAY;
+            }
+
+            DrawRectangle(x, y, BOX_WIDTH , BOX_HIGHT, boxColour);
+            DrawRectangleLines(x, y, BOX_WIDTH, BOX_HIGHT, WHITE); // Draw box outline
+        }
+    }
+}
+
+int main(void) {
     // Initialization
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Digital Dash Cluster");
     SetTargetFPS(60);
@@ -32,22 +57,20 @@ int main(void)
     float fuel = 100.0f;         // Fuel in percentage
     float oilPressure = 50.0f;   // Oil pressure in PSI
     float coolantTemp = 70.0f;   // Coolant temperature in °C
-    float fulePressure = 70.0f;
-    float volts = 12.5f;
+    float fulePressure = 70.0f;  // Fuel pressure
+    float volts = 12.5f;         // Voltage
     int centerX = SCREEN_WIDTH / 2;
     int centerY = SCREEN_HEIGHT / 2;
 
-    //flashing controll
+    // Flashing control
     float flashDuration = 0.5f;
     float timer = 0.0f;
     bool showText = true;
     bool testing = true;
 
-
-
-    while (!WindowShouldClose()) // Main game loop
-    {
-        if (testing){
+    while (!WindowShouldClose()) { // Main game loop
+        if (testing) {
+            // Simulate data updates
             speed += 0.5f;
             if (speed > 220.0f) speed = 0.0f; // Reset speed
             rpm += 10.0f;
@@ -63,51 +86,74 @@ int main(void)
             volts += 0.002f;
             if (volts > 14.5f) volts = 10.5f;
         }
-        // Update values (for simulation purposes)
-                // Draw
-        BeginDrawing();
-        ClearBackground(BACKGROUND);
 
-        //flashing texts
+        // Update flashing text logic
         timer += GetFrameTime();
-        if (timer >= flashDuration){
-            showText =  !showText;
+        if (timer >= flashDuration) {
+            showText = !showText;
             timer = 0.0f;
         }
 
-        // Draw speed (centered)
-        //DrawRectangle(440,300,400,200,DARKGRAY);
+        // Draw
+        BeginDrawing();
+        ClearBackground(BACKGROUND);
+
+        // Draw the main elements
+        drawWarnings();
+
+        // Draw speed
         int speedSize = 250;
         const char *speedText = TextFormat("%.0f", speed);
         int speedTextWidth = MeasureText(speedText, speedSize);
+        DrawText(speedText, centerX - (speedTextWidth / 2), centerY - 150, speedSize, CYAN);
 
-        drawWarnings();
-
-        DrawText(speedText, centerX - (speedTextWidth /  2), centerY - 100, speedSize, CYAN);
         // Draw RPM
-        if (rpm < 6800.0f){
-         DrawText("RPM", 80, 220, 30, MAGENTA);
-         DrawText(TextFormat("%.1f", rpm), 80, 260, 50, LIGHTGRAY);
-        } else {
-          DrawText("RPM", 80, 220, 30, MAGENTA);
-          DrawText(TextFormat("%.1f", rpm), 80, 260, 50, RED);
-        }
-               // Draw fuel
-        DrawText("Fuel", 80, 340, 30, MAGENTA);
-        if ( fuel > 20.0f ){
-            DrawText(TextFormat("%.1f%%", fuel), 80, 380, 50, LIGHTGRAY);
-        } else {
-            DrawText(TextFormat("%.1f%%", fuel), 80, 380, 50, RED);
-            if (showText){
-                DrawText("!", 220, 380, 60, RED);
-            }
+        DrawText("RPM", 80, 220, 30, MAGENTA);
+        DrawText(TextFormat("%.1f", rpm), 80, 260, 50, (rpm < 6800.0f) ? LIGHTGRAY : RED);
 
+        // Draw Fuel
+        DrawText("Fuel", 80, 340, 30, MAGENTA);
+        DrawText(TextFormat("%.1f%%", fuel), 80, 380, 50, (fuel > 20.0f) ? LIGHTGRAY : RED);
+        if (fuel <= 20.0f && showText) {
+            DrawText("!", 220, 380, 60, RED);
         }
+
         // Draw Oil Pressure
         DrawText("Oil Pressure", 1020, 340, 30, MAGENTA);
         DrawText(TextFormat("%.1f PSI", oilPressure), 1020, 380, 50, LIGHTGRAY);
 
-        // Draw Coolant temp
+        // Draw Coolant Temperature
+        DrawText("Coolant Temp", 1020, 220, 30, MAGENTA);
+        DrawText(TextFormat("%.1f °C", coolantTemp), 1020, 260, 50, (coolantTemp < 90.0f) ? LIGHTGRAY : RED);
+        if (coolantTemp >= 90.0f && showText) {
+            DrawText("!", 1210, 260, 60, RED);
+        }
+
+        // Draw RPM Gauge Background
+        DrawRectangle(BUFFER, 60, SCREEN_WIDTH - 2 * BUFFER, 120, LIGHTGRAY);
+
+        // Draw RPM Bar
+        Color rpmColor = (rpm < 5000.0f) ? GREEN : (rpm < 6500.0f) ? YELLOW : (rpm < 7100.0f) ? YELLOW : RED;
+        float rpmBarWidth = ((rpm / MAX_RPM) * (SCREEN_WIDTH - 2 * BUFFER));
+        DrawRectangle(BUFFER, 60, rpmBarWidth, 120, rpmColor);
+
+
+        for (int i = 0; i <= 8; i++) {
+            float indicatorX = BUFFER + (i * ((SCREEN_WIDTH - 2 * BUFFER) / 8));
+            DrawText(TextFormat("%d", i * 100), indicatorX - 15, 190, 20, WHITE); // Adjusted Y-coordinate to 180
+        }
+
+         if (rpm >= 0.90f * MAX_RPM) {
+            int boxW = 600;
+            int boxH = 200;
+            const char *shiftText= "SHIFT!";
+            int shiftTextWidth = MeasureText(shiftText, 70);
+            DrawRectangle(centerX - (boxW / 2), centerY - (boxH / 2) + 35 , boxW, boxH, RED); // Larger box
+            DrawText("SHIFT!", centerX - (shiftTextWidth / 2) , centerY, 70, WHITE); // Centered text
+        }
+
+
+         // Draw Coolant temp
         if (coolantTemp < 90.0f){
             DrawText("Coolant Temp", 1020, 220, 30, MAGENTA);
             DrawText(TextFormat("%.1f °C", coolantTemp), 1020, 260, 50, LIGHTGRAY);
@@ -135,53 +181,13 @@ int main(void)
             }
         }
 
-        // Draw RPM gauge background with buffer
-        DrawRectangle(BUFFER, 60, SCREEN_WIDTH - 2 * BUFFER, 120, LIGHTGRAY); // Added buffer
-
-        // Determine RPM color based on stage
-        Color rpmColor;
-        if (rpm < 5000.0f) {
-            rpmColor = GREEN; // Safe zone
-        } else if (rpm < 6500.0f) {
-            rpmColor = YELLOW; // Caution zone
-        } else if (rpm < 7100.0f) {
-            rpmColor = YELLOW; // Danger zone
-        } else {
-            rpmColor = RED; // Red at max RPM
-        }
-
-        // Draw RPM filled bar
-        float rpmBarWidth = ((rpm / MAX_RPM) * (SCREEN_WIDTH - 2 * BUFFER));
-        DrawRectangle(BUFFER, 60, rpmBarWidth, 120, rpmColor); // Full width with buffer
-
-        // Draw RPM indicators below the bar
-        for (int i = 0; i <= 8; i++) {
-            float indicatorX = BUFFER + (i * ((SCREEN_WIDTH - 2 * BUFFER) / 8));
-            DrawText(TextFormat("%d", i * 100), indicatorX - 15, 180, 20, WHITE); // Adjusted Y-coordinate to 180
-        }
-
-        // Draw oil pressure and coolant temp on the left side
-        // DrawText("Oil Pressure:", 80, 430, 25, BLACK); // Left side
-        //DrawText(TextFormat("%.1f PSI", oilPressure), 80, 460, 25, DARKGRAY); // Same style
-        //DrawText("Coolant Temp:", 80, 500, 25, BLACK); // Left side
-        //DrawText(TextFormat("%.1f °C", coolantTemp), 80, 530, 25, DARKGRAY); // Same style
-
-        // Draw larger "SHIFT!" message box at 90% RPM
-        if (rpm >= 0.90f * MAX_RPM) {
-            int boxW = 600;
-            int boxH = 200;
-            const char *shiftText= "SHIFT!";
-            int shiftTextWidth = MeasureText(shiftText, 70);
-            DrawRectangle(centerX - (boxW / 2), centerY - (boxH / 2) + 35 , boxW, boxH, RED); // Larger box
-            DrawText("SHIFT!", centerX - (shiftTextWidth / 2) , centerY, 70, WHITE); // Centered text
-        }
+        // Draw signal indicator grid
+        drawSignalIndicatorGrid();
 
         EndDrawing();
     }
 
     // De-Initialization
     CloseWindow(); // Close window and OpenGL context
-
-
     return 0;
 }
